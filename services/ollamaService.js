@@ -29,24 +29,131 @@ class OllamaService {
 
         // JSON schema for document analysis output
         this.documentAnalysisSchema = {
+    type: "object",
+    properties: {
+        title: {
+            type: "string",
+            maxLength: 120
+        },
+        correspondent: {
+            type: "string",
+            maxLength: 100
+        },
+        tags: {
+            type: "array",
+            items: {
+                type: "string"
+            },
+            maxItems: 4
+        },
+        document_type: {
+            type: "string",
+            enum: [
+                "Invoice",
+                "Receipt",
+                "Contract",
+                "Tax Document",
+                "Insurance",
+                "Letter",
+                "Report",
+                "Article",
+                "Book",
+                "Manual",
+                "Identification",
+                "Certificate",
+                "Statement",
+                "Form",
+                "Notice",
+                "Medical",
+                "Financial",
+                "Business",
+                "Employment",
+                "Legal",
+                "Government",
+                "Education",
+                "Other"
+            ]
+        },
+        document_date: {
+            type: "string",
+            maxLength: 10
+        },
+        language: {
+            type: "string",
+            enum: [
+                "",
+                "en",
+                "uk",
+                "ru",
+                "de",
+                "es",
+                "fr"
+            ]
+        },
+        custom_fields: {
             type: "object",
             properties: {
-                title: { type: "string" },
-                correspondent: { type: "string" },
-                tags: {
-                    type: "array",
-                    items: { type: "string" }
-                },
-                document_type: { type: "string" },
-                document_date: { type: "string" },
-                language: { type: "string" },
-                custom_fields: {
+                "0": {
                     type: "object",
-                    additionalProperties: true
+                    properties: {
+                        field_name: {
+                            const: "language"
+                        },
+                        value: {
+                            type: "string",
+                            enum: [
+                                "",
+                                "en",
+                                "uk",
+                                "ru",
+                                "de",
+                                "es",
+                                "fr"
+                            ]
+                        }
+                    },
+                    required: [
+                        "field_name",
+                        "value"
+                    ],
+                    additionalProperties: false
+                },
+                "1": {
+                    type: "object",
+                    properties: {
+                        field_name: {
+                            const: "AI_Summary"
+                        },
+                        value: {
+                            type: "string",
+                            maxLength: 500
+                        }
+                    },
+                    required: [
+                        "field_name",
+                        "value"
+                    ],
+                    additionalProperties: false
                 }
             },
-            required: ["title", "correspondent", "tags", "document_type", "document_date", "language"]
-        };
+            required: [
+                "0",
+                "1"
+            ],
+            additionalProperties: false
+        }
+    },
+    required: [
+        "title",
+        "correspondent",
+        "tags",
+        "document_type",
+        "document_date",
+        "language",
+        "custom_fields"
+    ],
+    additionalProperties: false
+};
 
         // Schema for playground analysis (simpler version)
         this.playgroundSchema = {
@@ -425,26 +532,19 @@ class OllamaService {
      * @returns {string} System prompt
      */
     _generateSystemPrompt(customFieldsStr) {
-        let systemPromptTemplate = `
-            You are a document analyzer. Your task is to analyze documents and extract relevant information. You do not ask back questions. 
-            YOU MUSTNOT: Ask for additional information or clarification, or ask questions about the document, or ask for additional context.
-            YOU MUSTNOT: Return a response without the desired JSON format.
-            YOU MUST: Return the result EXCLUSIVELY as a JSON object. The Tags, Title and Document_Type MUST be in the language that is used in the document.:
-            IMPORTANT: The custom_fields are optional and can be left out if not needed, only try to fill out the values if you find a matching information in the document.
-            Do not change the value of field_name, only fill out the values. If the field is about money only add the number without currency and always use a . for decimal places.
-            {
-                "title": "xxxxx",
-                "correspondent": "xxxxxxxx",
-                "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
-                "document_type": "Invoice/Contract/...",
-                "document_date": "YYYY-MM-DD",
-                "language": "en/de/es/...",
-                %CUSTOMFIELDS%
-            }
-            ALWAYS USE THE INFORMATION TO FILL OUT THE JSON OBJECT. DO NOT ASK BACK QUESTIONS.
-        `;
+    let systemPromptTemplate = `
+        You are a document analyzer. Analyze the supplied document and extract metadata according to the instructions in the user prompt.
 
-        return systemPromptTemplate.replace('%CUSTOMFIELDS%', customFieldsStr);
+        Do not ask questions or request additional information.
+        Return ONLY the JSON object required by the response schema.
+
+        Use ONLY information available in the supplied document.
+        Do not invent, guess, or assume missing information.
+
+        The response MUST comply with the provided JSON schema.
+    `;
+
+    return systemPromptTemplate.replace('%CUSTOMFIELDS%', customFieldsStr);
     }
 
     /**
@@ -545,14 +645,16 @@ class OllamaService {
             prompt: prompt,
             system: systemPrompt,
             stream: false,
+            think: false,
             format: schema,
             options: {
-                temperature: 0.7,
+                temperature: 0.5,
                 top_p: 0.9,
                 repeat_penalty: 1.1,
                 top_k: 7,
-                num_predict: 256,
-                num_ctx: numCtx
+                num_predict: 512,
+                num_ctx: numCtx,
+                num_thread: 12
             }
         });
 

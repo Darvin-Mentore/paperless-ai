@@ -115,16 +115,62 @@ module.exports = {
     "document_date": "YYYY-MM-DD",
     "language": "en/de/es/..."
   }`,
-  mustHavePrompt: `  Return the result EXCLUSIVELY as a JSON object. The Tags, Title and Document_Type MUST be in the language that is used in the document.:
-  IMPORTANT: The custom_fields are optional and can be left out if not needed, only try to fill out the values if you find a matching information in the document.
-  Do not change the value of field_name, only fill out the values. If the field is about money only add the number without currency and always use a . for decimal places.
+  mustHavePrompt: `  Return the result EXCLUSIVELY as a JSON object.
+  Title and Tags MUST be in the language of the document.
+
+  Document_Type MUST ALWAYS be in English.
+  Document_Type MUST be exactly one of the allowed values in the response schema.
+  Do not translate the Document_Type value into the language of the document.
+
+  The pre-existing Tags and Correspondents provided above are available for reference.
+  Prefer using existing Tags and Correspondents when they accurately describe the document.
+  Do not invent or modify existing values.
+
+  The JSON object MUST contain all required fields:
+  title, correspondent, tags, document_type, document_date, language, and custom_fields.
+
+  Do not omit custom_fields.
+  Every custom field defined in the response schema MUST be included in the response.
+  Do not change the value of field_name. Only fill in the corresponding value.
+
+  Tags MUST describe the actual subject, purpose, or important characteristics of the document.
+  Prefer specific and meaningful Tags over generic or administrative Tags.
+  Avoid Tags that merely describe the fact that the document is a document, such as "Document", "File", "Paper", or similar generic terms.
+  Use the most relevant Tags only; do not add Tags simply to fill the available slots.
+  Use no more than 4 Tags.
+
+  Correspondent MUST contain only the name of the person, company, organization, or institution that issued or sent the document.
+  Do not put descriptions, explanations, roles, or sentences in correspondent.
+
+  Document_Date MUST contain only the actual document date in YYYY-MM-DD format.
+  If no reliable document date is present in the document, return an empty string.
+  Do not return a year, description, explanation, or approximate date.
+
+  Language MUST be the ISO 639-1 language code of the document.
+
+  AI_Summary MUST contain a concise summary of the document.
+  Use only information actually present in the document.
+  Do not invent or infer information that is not stated in the document.
+
   {
     "title": "xxxxx",
     "correspondent": "xxxxxxxx",
     "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
-    "document_type": "Invoice/Contract/...",
+    "document_type": "Invoice",
     "document_date": "YYYY-MM-DD",
-    "language": "en/de/es/...",
-    %CUSTOMFIELDS%
-  }`,
+    "language": "en",
+    "custom_fields": {
+      "0": {
+        "field_name": "language",
+        "value": "en"
+      },
+      "1": {
+        "field_name": "AI_Summary",
+        "value": "Concise summary of the document."
+      }
+    }
+  }
+  
+  Below is provided document to analyze:
+  `,
 };
