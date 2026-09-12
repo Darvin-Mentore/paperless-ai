@@ -75,7 +75,8 @@ module.exports = {
   },
   ollama: {
     apiUrl: process.env.OLLAMA_API_URL || 'http://localhost:11434',
-    model: process.env.OLLAMA_MODEL || 'llama3.2'
+    model: process.env.OLLAMA_MODEL || 'llama3.2',
+    documentAnalysisApi: process.env.OLLAMA_DOCUMENT_ANALYSIS_API || 'generate'
   },
   custom: {
     apiUrl: process.env.CUSTOM_BASE_URL || '',
@@ -120,6 +121,9 @@ module.exports = {
 
   Document_Type MUST ALWAYS be in English.
   Document_Type MUST be exactly one of the allowed values in the response schema.
+  Choose the most specific applicable Document_Type.
+  Prefer a specific Document_Type over "Other" whenever the document clearly matches an available type.
+  Use "Other" only when none of the available Document_Type values reasonably describes the document.
   Do not translate the Document_Type value into the language of the document.
 
   The pre-existing Tags and Correspondents provided above are available for reference.

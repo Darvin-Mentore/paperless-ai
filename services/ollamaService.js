@@ -640,7 +640,38 @@ class OllamaService {
      * @returns {Object} Ollama API response
      */
     async _callOllamaAPI(prompt, systemPrompt, numCtx, schema) {
-        const response = await this.client.post(`${this.apiUrl}/api/generate`, {
+    const apiMode = config.ollama.documentAnalysisApi;
+
+    let response;
+
+    if (apiMode === 'chat') {
+        response = await this.client.post(`${this.apiUrl}/api/chat`, {
+            model: this.model,
+            messages: [
+                {
+                    role: 'system',
+                    content: systemPrompt
+                },
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            stream: false,
+            think: false,
+            format: schema,
+            options: {
+                temperature: 0.5,
+                top_p: 0.9,
+                repeat_penalty: 1.1,
+                top_k: 7,
+                num_predict: 512,
+                num_ctx: numCtx,
+                num_thread: 12
+            }
+        });
+    } else {
+        response = await this.client.post(`${this.apiUrl}/api/generate`, {
             model: this.model,
             prompt: prompt,
             system: systemPrompt,
@@ -657,12 +688,22 @@ class OllamaService {
                 num_thread: 12
             }
         });
+    }
 
-        if (!response.data) {
-            throw new Error('Invalid response from Ollama API');
+    if (!response.data) {
+        throw new Error('Invalid response from Ollama API');
+    }
+
+    // Normalize /api/chat response to the same format used by /api/generate
+    if (apiMode === 'chat') {
+        if (!response.data.message || typeof response.data.message.content !== 'string') {
+            throw new Error('Invalid chat response from Ollama API');
         }
 
-        return response.data;
+        response.data.response = response.data.message.content;
+    }
+
+    return response.data;
     }
 
     /**
