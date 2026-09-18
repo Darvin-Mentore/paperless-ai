@@ -27,7 +27,7 @@ class ManualService {
         } else {            
             this.openai = new OpenAI({ apiKey: config.openai.apiKey });
             this.ollama = axios.create({
-            timeout: 300000
+            timeout: 600000
             });
         }
     }

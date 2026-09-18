@@ -661,7 +661,7 @@ class OllamaService {
             think: false,
             format: schema,
             options: {
-                temperature: 0.5,
+                temperature: 0,
                 top_p: 0.9,
                 repeat_penalty: 1.1,
                 top_k: 7,
@@ -685,7 +685,7 @@ class OllamaService {
                 top_k: 7,
                 num_predict: 512,
                 num_ctx: numCtx,
-                num_thread: 12
+                num_thread: 8
             }
         });
     }
