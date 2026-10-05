@@ -667,7 +667,7 @@ class OllamaService {
                 top_k: 7,
                 num_predict: 512,
                 num_ctx: numCtx,
-                num_thread: 12
+                num_thread: 8
             }
         });
     } else {
