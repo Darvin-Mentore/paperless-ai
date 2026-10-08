@@ -1284,39 +1284,49 @@ async getOrCreateDocumentType(name) {
         delete updates.correspondent;
       }
 
-      let updateData;
-      try {
-        if (updates.created) {
-          let dateObject;
-          
-          dateObject = parseISO(updates.created);
-          
+      let updateData = { ...updates };
+
+      if (updates.created) {
+        try {
+          const inputDate = String(updates.created).trim();
+          let dateObject = parseISO(inputDate);
+
+          const formats = [
+            'dd.MM.yyyy',
+            'dd-MM-yyyy',
+            'MM/dd/yyyy',
+            'MM/dd/yy'
+          ];
+
           if (!isValid(dateObject)) {
-            dateObject = parse(updates.created, 'dd.MM.yyyy', new Date());
-            if (!isValid(dateObject)) {
-              dateObject = parse(updates.created, 'dd-MM-yyyy', new Date());
+            for (const dateFormat of formats) {
+              if (dateFormat === 'MM/dd/yyyy' &&
+                  !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(inputDate)) continue;
+
+              if (dateFormat === 'MM/dd/yy' &&
+                  !/^\d{1,2}\/\d{1,2}\/\d{2}$/.test(inputDate)) continue;
+
+              dateObject = parse(inputDate, dateFormat, new Date());
+              if (isValid(dateObject)) break;
             }
           }
-          
-          if (!isValid(dateObject)) {
-            console.warn(`[WARN] Invalid date format: ${updates.created}, using fallback date: 01.01.1990`);
-            dateObject = new Date(1990, 0, 1);
+
+          if (isValid(dateObject)) {
+            updateData.created = format(dateObject, 'yyyy-MM-dd');
+          } else {
+            console.warn(
+              `[WARN] Invalid document date: ${inputDate}. ` +
+              `Keeping existing date for document ${documentId}.`
+            );
+            delete updateData.created;
           }
-      
-          updateData = {
-            ...updates,
-            created: format(dateObject, 'yyyy-MM-dd'),
-          };
-        } else {
-          updateData = { ...updates };
+        } catch (error) {
+          console.warn(
+            `[WARN] Date parsing error for document ${documentId}:`,
+            error.message
+          );
+          delete updateData.created;
         }
-      } catch (error) {
-        console.warn('[WARN] Error parsing date:', error.message);
-        console.warn('[DEBUG] Received Date:', updates);
-        updateData = {
-          ...updates,
-          created: format(new Date(1990, 0, 1), 'yyyy-MM-dd'),
-        };
       }
 
       // // Handle custom fields update
