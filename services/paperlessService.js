@@ -1284,6 +1284,8 @@ async getOrCreateDocumentType(name) {
         delete updates.correspondent;
       }
 
+      // Normalize AI-generated dates; preserve the existing document date
+      // when the supplied value cannot be parsed reliably.
       let updateData = { ...updates };
 
       if (updates.created) {
