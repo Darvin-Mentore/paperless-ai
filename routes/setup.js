@@ -1621,24 +1621,43 @@ async function buildUpdateData(analysis, doc) {
 
   console.log(`[DEBUG] Building update data with restrictions: tags=${options.restrictToExistingTags}, correspondents=${options.restrictToExistingCorrespondents}`);
 
-  // Only process tags if tagging is activated
+  // AI-generated tags (optional)
   if (config.limitFunctions?.activateTagging !== 'no') {
-    const { tagIds, errors } = await paperlessService.processTags(analysis.document.tags, options);
+    const { tagIds, errors } = await paperlessService.processTags(
+      analysis.document.tags, options
+    );
     if (errors.length > 0) {
-      console.warn('[ERROR] Some tags could not be processed:', errors);
+      console.warn('[ERROR] Some AI tags could not be processed:', errors);
     }
     updateData.tags = tagIds;
-  } else if (config.limitFunctions?.activateTagging === 'no' && config.addAIProcessedTag === 'yes') {
-    // Add AI processed tags to the document (processTags function awaits a tags array)
-    // get tags from .env file and split them by comma and make an array
-    console.log('[DEBUG] Tagging is deactivated but AI processed tag will be added');
-    const tags = config.addAIProcessedTags.split(',');
-    const { tagIds, errors } = await paperlessService.processTags(tags, options);
-    if (errors.length > 0) {
-      console.warn('[ERROR] Some tags could not be processed:', errors);
+  }
+
+  // Completion tags are independent of AI-generated tagging.
+  if (config.addAIProcessedTag === 'yes') {
+    const completionTags = config.addAIProcessedTags
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(Boolean);
+
+    if (completionTags.length > 0) {
+      const { tagIds, errors } = await paperlessService.processTags(
+        completionTags,
+        { restrictToExistingTags: false }
+      );
+
+      if (errors.length > 0 || tagIds.length !== completionTags.length) {
+        throw new Error(
+          'Failed to resolve all AI completion tags: ' +
+          JSON.stringify(errors)
+        );
+      }
+
+      updateData.tags = [
+        ...new Set([...(updateData.tags || []), ...tagIds])
+      ];
+
+      console.log('[DEBUG] AI completion tag IDs:', tagIds);
     }
-    updateData.tags = tagIds;
-    console.log('[DEBUG] Tagging is deactivated');
   }
 
   // Only process title if title generation is activated
