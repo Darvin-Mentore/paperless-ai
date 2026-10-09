@@ -47,32 +47,7 @@ class OllamaService {
             maxItems: 4
         },
         document_type: {
-            type: "string",
-            enum: [
-                "Invoice",
-                "Receipt",
-                "Contract",
-                "Tax Document",
-                "Insurance",
-                "Letter",
-                "Report",
-                "Article",
-                "Book",
-                "Manual",
-                "Identification",
-                "Certificate",
-                "Statement",
-                "Form",
-                "Notice",
-                "Medical",
-                "Financial",
-                "Business",
-                "Employment",
-                "Legal",
-                "Government",
-                "Education",
-                "Other"
-            ]
+            type: "string"
         },
         document_date: {
             type: "string",
@@ -174,12 +149,61 @@ class OllamaService {
     }
 
     /**
-     * Analyze a document and extract metadata
+     * Build per-request JSON Schema from current Paperless metadata.
+     */
+    _buildDocumentAnalysisSchema(existingTags, existingDocumentTypesList) {
+        const excludedTags = new Set([
+            'paperless-ai-completed',
+            'paperless-gpt-auto-complete',
+            'paperless-gpt-failed',
+            'paperless-gpt-ocr-auto',
+            'paperless-gpt-ocr-completed',
+            'Restart-AI-processing',
+            'Review'
+        ]);
+
+        const normalizeNames = (values, field) => {
+            if (!Array.isArray(values)) {
+                throw new Error(`Invalid Paperless ${field}: expected array`);
+            }
+
+            return [...new Set(values
+                .filter(value => typeof value === 'string')
+                .map(value => value.trim())
+                .filter(Boolean))];
+        };
+
+        const documentTypes = normalizeNames(
+            existingDocumentTypesList, 'document types'
+        );
+
+        const tags = normalizeNames(existingTags, 'tags')
+            .filter(tag => !excludedTags.has(tag));
+
+        if (!documentTypes.length) {
+            throw new Error('No document types available for Ollama schema');
+        }
+
+        if (!tags.length) {
+            throw new Error('No allowed tags available for Ollama schema');
+        }
+
+        const schema = JSON.parse(JSON.stringify(this.documentAnalysisSchema));
+        schema.properties.document_type.enum = documentTypes;
+        schema.properties.tags.items.enum = tags;
+
+        return schema;
+    }
+
+    /**
+     * Analyze a document and extract metadata.
      * @param {string} content - Document content
-     * @param {Array} existingTags - List of existing tags
-     * @param {Array} existingCorrespondentList - List of existing correspondents
-     * @param {string} id - Document ID
-     * @param {string} customPrompt - Custom prompt (optional)
+     * @param {Array} existingTags - Existing Paperless tag names
+     * @param {Array} existingCorrespondentList - Existing correspondents
+     * @param {Array} existingDocumentTypesList - Existing document type names
+     * @param {string|number} id - Document ID
+     * @param {string|null} customPrompt - Optional custom prompt
+     * @param {Object} options - Analysis options
      * @returns {Object} Analysis results
      */
     async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
@@ -249,7 +273,15 @@ class OllamaService {
             console.log(`[DEBUG] External API data: ${validatedExternalApiData ? 'included' : 'none'}`);
 
             // Call Ollama API
-            const response = await this._callOllamaAPI(prompt, systemPrompt, numCtx, this.documentAnalysisSchema);
+            const response = await this._callOllamaAPI(
+                prompt,
+                systemPrompt,
+                numCtx,
+                this._buildDocumentAnalysisSchema(
+                    existingTags,
+                    existingDocumentTypesList
+                )
+            );
 
             // Process response
             const parsedResponse = this._processOllamaResponse(response);

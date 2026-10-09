@@ -2392,12 +2392,13 @@ async function processQueue(customPrompt) {
     ]);
 
     const existingDocumentTypesList = existingDocumentTypes.map(docType => docType.name);
+    const existingTagNames = existingTags.map(tag => tag.name);
 
     while (documentQueue.length > 0) {
       const doc = documentQueue.shift();
       
       try {
-        const result = await processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId, customPrompt);
+        const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId, customPrompt);
         if (!result) continue;
 
         const { analysis, originalData } = result;
