@@ -182,17 +182,6 @@ class OllamaService {
             });
     }
 
-    /** Normalize line breaks from stored prompts and OCR text. */
-    _normalizeTextLineBreaks(value) {
-        if (typeof value !== 'string') return value;
-        return value
-            .replace(/\r\n/g, '\n')
-            .replace(/\\r\\n/g, '\n')
-            .replace(/\\n/g, '\n')
-            .replace(/\\r/g, '\n')
-            .replace(/\r/g, '\n');
-    }
-
     /** Substitute current Paperless metadata into the corresponding field rules. */
     _renderFieldRules(template, existingTags, correspondents, documentTypes) {
         const names = values => Array.isArray(values)
@@ -207,15 +196,8 @@ class OllamaService {
             '%CLASSIFICATION_TAGS%': this._getClassificationTags(existingTags).join(', ') || '(none)',
             '%CORRESPONDENTS%': names(correspondents).join(', ') || '(none)'
         };
-        const rendered = this._normalizeTextLineBreaks(template).replace(
-            /%DOCUMENT_TYPES%|%CLASSIFICATION_TAGS%|%CORRESPONDENTS%/g,
-            match => replacements[match]
-        );
-        const unresolved = rendered.match(/%[A-Z][A-Z_]*%/g);
-        if (unresolved) {
-            console.warn('[WARNING] Unresolved prompt placeholders:', [...new Set(unresolved)].join(', '));
-        }
-        return rendered;
+        return template.replace(/%DOCUMENT_TYPES%|%CLASSIFICATION_TAGS%|%CORRESPONDENTS%/g,
+            match => replacements[match]);
     }
     _buildDocumentAnalysisSchema(existingTags, existingDocumentTypesList) {
         const normalizeNames = (values, field) => {
@@ -261,7 +243,7 @@ class OllamaService {
     async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
         try {
             // Truncate content if needed
-            content = this._truncateContent(this._normalizeTextLineBreaks(content));
+            content = this._truncateContent(content);
 
             // Cache thumbnail
             await this._handleThumbnailCaching(id);
@@ -309,7 +291,7 @@ class OllamaService {
 
                 prompt = this._renderFieldRules(customPrompt, existingTags, existingCorrespondentList, existingDocumentTypesList)
                     + '\n\n' + config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr)
-                    + '\n\n' + content;
+                    + '\n' + JSON.stringify(content);
                 console.log('[DEBUG] Ollama Service started with custom prompt');
             }
 
@@ -546,7 +528,7 @@ class OllamaService {
         }
 
         return `${systemPrompt}
-        ${this._normalizeTextLineBreaks(content)}
+        ${JSON.stringify(content)}
         `;
     }
 
