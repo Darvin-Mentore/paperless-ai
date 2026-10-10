@@ -533,6 +533,15 @@ class OllamaService {
             config
         );
 
+        // Render UI Prompt Description (SYSTEM_PROMPT) using current Paperless metadata.
+        // This also restores actual newlines from escaped values stored in .env.
+        systemPrompt = this._renderFieldRules(
+            systemPrompt,
+            existingTags,
+            correspondentList,
+            existingDocumentTypes
+        );
+
         // Include validated external API data if available
         if (validatedExternalApiData) {
             systemPrompt += `\n\nAdditional context from external API:\n${validatedExternalApiData}`;
