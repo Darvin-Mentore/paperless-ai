@@ -116,95 +116,25 @@ module.exports = {
     "document_date": "YYYY-MM-DD",
     "language": "en/de/es/..."
   }`,
-  mustHavePrompt: `  Return the result EXCLUSIVELY as a JSON object.
+  mustHavePrompt: `OUTPUT FORMAT
 
-TITLE:
-The title identifies the document itself, not its summary or subject.
-Use the document's explicit title or heading when one is clearly present.
-If no explicit title exists, create a short neutral title that describes the document itself.
-Do not use a person's name, correspondent name, filename, or summary as the title unless it is explicitly the document title.
-Do not rewrite the document into a descriptive sentence.
-Title MUST be in the language of the document.
-Do not include Markdown syntax, list markers, or formatting characters in the title.
+Return the result EXCLUSIVELY as one valid JSON object.
 
-Document_Type MUST ALWAYS be in English.
-Document_Type MUST be exactly one of the allowed values in the response schema.
-Choose the most specific applicable Document_Type.
-Prefer a specific Document_Type over "Other" whenever the document clearly matches an available type.
-Use "Other" only when none of the available Document_Type values reasonably describes the document.
-Do not translate the Document_Type value into the language of the document.
-
-The pre-existing Tags and Correspondents provided above are available for reference.
-Existing Tags and Correspondents are candidates, not required values.
-Use an existing Tag or Correspondent only when it accurately describes the document and matches the rules for that field.
-Do not select an existing value merely because it is available, familiar, or similar to the document type.
-Do not invent or modify existing values.
-
-The JSON object MUST contain all required fields:
-title, correspondent, tags, document_type, document_date, language, and custom_fields.
-
-Do not omit custom_fields.
-Every custom field defined in the response schema MUST be included in the response.
-Do not change the value of field_name. Only fill in the corresponding value.
-
-TAGS:
-Tags describe what the document is about, not what kind of document it is.
-Do not use Document_Type as a substitute for Tags.
-Use Tags for meaningful subject matter, important topics, people, organizations, products, services, events, obligations, locations, or other important concepts explicitly contained in the document.
-Do not create Tags merely to describe the document type, format, or structure.
-Do not use Tags such as "Document", "File", "Paper", "Letter", "Report", "Schedule", "Form", "Other", or similar generic type or format labels unless the Tag represents an important subject explicitly contained in the document.
-Do not create Tags solely from the document title.
-Do not create Tags solely from the correspondent name.
-Prefer specific and meaningful Tags over generic or administrative Tags.
-Existing Tags are candidates, not required values.
-Use an existing Tag only when it accurately describes a meaningful aspect of the document.
-Never choose an existing Tag merely because it is available or because it resembles the Document_Type.
-Tags MUST be in the language of the document, unless an existing Tag is intentionally reused as-is and accurately represents a meaningful aspect of the document.
-Use the most relevant Tags only; do not add Tags simply to fill the available slots.
-Prefer a small number of highly relevant Tags over several weak Tags.
-Leave unused Tag slots empty rather than adding weak, generic, or redundant Tags.
-Use no more than 4 Tags.
-
-CORRESPONDENT:
-Identify the primary person, company, organization, institution, or authority responsible for issuing, sending, providing, or being primarily associated with the document.
-The correspondent MUST be the name of an actual entity.
-Do not use a role, job title, profession, service description, software name, document type, or generic phrase as correspondent unless it is explicitly the name of the issuing or associated entity.
-For letters and messages, use the sender.
-For invoices, statements, notices, certificates, and similar documents, use the issuer or provider.
-For contracts and agreements, use the primary issuing or managing party when one entity is clearly identifiable.
-If no single correspondent can be identified reliably, return an empty string.
-Return only the entity name.
-Do not put multiple parties, roles, descriptions, or sentences in correspondent.
-
-Document_Date MUST contain only the actual document date in YYYY-MM-DD format.
-If no reliable document date is present in the document, return an empty string.
-Do not return a year, description, explanation, or approximate date.
-
-Language MUST be the ISO 639-1 language code of the document.
-
-AI_Summary MUST contain a concise summary of the document.
-Use only information actually present in the document.
-Do not invent or infer information that is not stated in the document.
+Use the following JSON structure and populate every required field with the extracted metadata. The values are illustrative, not values to copy:
 
 {
-"title": "xxxxx",
-"correspondent": "xxxxxxxx",
-"tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
-"document_type": "Invoice",
-"document_date": "YYYY-MM-DD",
-"language": "en",
-"custom_fields": {
-"0": {
-"field_name": "language",
-"value": "en"
-},
-"1": {
-"field_name": "AI_Summary",
-"value": "Concise summary of the document."
-}
-}
+  "title": "Example document title",
+  "correspondent": "",
+  "tags": [],
+  "document_type": "Note",
+  "document_date": "",
+  "language": "en",
+  %CUSTOMFIELDS%
 }
 
-Below is provided document to analyze:
-`,
+Include every custom field defined in the response schema. Preserve its exact field_name and fill only its value. The response JSON Schema is authoritative for field names, data types, permitted values, required properties, and length constraints.
+
+Do not include Markdown, comments, explanations, additional properties, or any text outside the JSON object.
+
+BELOW IS DOCUMENT TEXT TO ANALYZE:`,
 };
