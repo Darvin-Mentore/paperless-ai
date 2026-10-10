@@ -151,84 +151,17 @@ class OllamaService {
     /**
      * Build per-request JSON Schema from current Paperless metadata.
      */
-    /**
-     * Remove workflow/control tags from AI classification candidates.
-     * Does not change tags stored in Paperless-ngx.
-     */
-    _getClassificationTags(existingTags) {
-        if (!Array.isArray(existingTags)) {
-            throw new Error('Invalid Paperless tags: expected array');
-        }
-
-        const excluded = new Set([
-            'restart-ai-processing',
-            'review'
+    _buildDocumentAnalysisSchema(existingTags, existingDocumentTypesList) {
+        const excludedTags = new Set([
+            'paperless-ai-completed',
+            'paperless-gpt-auto-complete',
+            'paperless-gpt-failed',
+            'paperless-gpt-ocr-auto',
+            'paperless-gpt-ocr-completed',
+            'Restart-AI-processing',
+            'Review'
         ]);
 
-        const excludedPrefixes = [
-            'paperless-ai-',
-            'paperless-gpt-',
-            'ocr_vision_'
-        ];
-
-        return [...new Set(existingTags
-            .filter(tag => typeof tag === 'string')
-            .map(tag => tag.trim())
-            .filter(Boolean))]
-            .filter(tag => {
-                const name = tag.toLowerCase();
-                return !excluded.has(name) &&
-                    !excludedPrefixes.some(prefix => name.startsWith(prefix));
-            });
-    }
-
-    /**
-     * Supply current Paperless metadata as system-level reference data.
-     */
-    _buildExistingMetadataSection(tags, correspondents, documentTypes) {
-        const names = values => Array.isArray(values)
-            ? [...new Set(values
-                .map(value => typeof value === 'string'
-                    ? value
-                    : value?.name)
-                .filter(value => typeof value === 'string')
-                .map(value => value.trim())
-                .filter(Boolean))]
-            : [];
-
-        const types = names(documentTypes);
-        const allowedTags = this._getClassificationTags(tags);
-        const people = names(correspondents);
-
-        return [
-            'CURRENT PAPERLESS METADATA',
-            '',
-            'The following values come from Paperless-ngx.',
-            'They are reference candidates, not mandatory selections.',
-            'Use the response JSON Schema as the authoritative list of allowed values.',
-            '',
-            'Pre-existing document types:',
-            types.length ? types.join(', ') : '(none)',
-            '',
-            'Pre-existing tags:',
-            allowedTags.length ? allowedTags.join(', ') : '(none)',
-            '',
-            'Pre-existing correspondents:',
-            people.length ? people.join(', ') : '(none)',
-            '',
-            'CLASSIFICATION RULES',
-            'Select the most specific document type supported by the document.',
-            'Use Other only when no specific available document type applies.',
-            'Select only meaningful subject tags supported by the content.',
-            'An exact category-name match in the document is not required.',
-            'Do not select workflow or processing-control tags.',
-            'Return an empty tags array when no suitable subject tag applies.',
-            'Reuse a correspondent only when it identifies the actual entity.',
-            'Do not invent facts or correspondent identities.'
-        ].join('\n');
-    }
-
-    _buildDocumentAnalysisSchema(existingTags, existingDocumentTypesList) {
         const normalizeNames = (values, field) => {
             if (!Array.isArray(values)) {
                 throw new Error(`Invalid Paperless ${field}: expected array`);
@@ -244,12 +177,16 @@ class OllamaService {
             existingDocumentTypesList, 'document types'
         );
 
-        const tags = this._getClassificationTags(existingTags);
+        const tags = normalizeNames(existingTags, 'tags')
+            .filter(tag => !excludedTags.has(tag));
 
         if (!documentTypes.length) {
             throw new Error('No document types available for Ollama schema');
         }
 
+        if (!tags.length) {
+            throw new Error('No allowed tags available for Ollama schema');
+        }
 
         const schema = JSON.parse(JSON.stringify(this.documentAnalysisSchema));
         schema.properties.document_type.enum = documentTypes;
@@ -294,7 +231,7 @@ class OllamaService {
             // Build prompt
             let prompt;
             if (!customPrompt) {
-                prompt = this._buildPrompt(content, this._getClassificationTags(existingTags), existingCorrespondentList, existingDocumentTypesList, options);
+                prompt = this._buildPrompt(content, existingTags, existingCorrespondentList, existingDocumentTypesList, options);
             } else {
                 // Parse CUSTOM_FIELDS for custom prompt
                 let customFieldsObj;
@@ -326,14 +263,7 @@ class OllamaService {
             const customFieldsStr = this._generateCustomFieldsTemplate();
 
             // Generate system prompt
-            const systemPrompt = [
-                this._generateSystemPrompt(customFieldsStr),
-                this._buildExistingMetadataSection(
-                    existingTags,
-                    existingCorrespondentList,
-                    existingDocumentTypesList
-                )
-            ].join('\n\n');
+            const systemPrompt = this._generateSystemPrompt(customFieldsStr);
 
             // Calculate context window size
             const promptTokenCount = this._calculatePromptTokenCount(prompt);
@@ -520,6 +450,9 @@ class OllamaService {
                 .join(', ');
 
             systemPrompt = `
+            Pre-existing tags: ${existingTagsList}\n\n
+            Pre-existing correspondents: ${existingCorrespondentList}\n\n
+            Pre-existing document types: ${existingDocumentTypesList}\n\n
             ` + process.env.SYSTEM_PROMPT + '\n\n' + config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
             promptTags = '';
         } else {
